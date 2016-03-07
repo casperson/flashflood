@@ -14,10 +14,10 @@
             buildForArchiving = "YES">
             <BuildableReference
                BuildableIdentifier = 'primary'
-               BlueprintIdentifier = '9D12CBA190EE4347FDA83945'
+               BlueprintIdentifier = '92F038352EE066AA3A2DFEEA'
                BlueprintName = 'AWSKinesis'
                ReferencedContainer = 'container:Pods.xcodeproj'
-               BuildableName = 'libAWSKinesis.a'>
+               BuildableName = 'AWSKinesis.framework'>
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>

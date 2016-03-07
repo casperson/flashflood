@@ -14,10 +14,10 @@
             buildForArchiving = "YES">
             <BuildableReference
                BuildableIdentifier = 'primary'
-               BlueprintIdentifier = 'A8C62D43E1BA769FC096CD81'
+               BlueprintIdentifier = '651845A76571442C67C45A5D'
                BlueprintName = 'AWSMobileAnalytics'
                ReferencedContainer = 'container:Pods.xcodeproj'
-               BuildableName = 'libAWSMobileAnalytics.a'>
+               BuildableName = 'AWSMobileAnalytics.framework'>
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>

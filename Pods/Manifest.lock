@@ -1,4 +1,5 @@
 PODS:
+  - Alamofire (3.2.0)
   - AWSAutoScaling (2.3.3):
     - AWSCore (= 2.3.3)
   - AWSCloudWatch (2.3.3):
@@ -30,8 +31,11 @@ PODS:
     - AWSCore (= 2.3.3)
   - AWSSQS (2.3.3):
     - AWSCore (= 2.3.3)
+  - Gloss (0.6.2)
+  - SwiftyJSON (2.3.2)
 
 DEPENDENCIES:
+  - Alamofire (~> 3.0)
   - AWSAutoScaling
   - AWSCloudWatch
   - AWSCognito
@@ -48,8 +52,20 @@ DEPENDENCIES:
   - AWSSimpleDB
   - AWSSNS
   - AWSSQS
+  - Gloss (~> 0.6)
+  - SwiftyJSON (from `https://github.com/SwiftyJSON/SwiftyJSON.git`)
+
+EXTERNAL SOURCES:
+  SwiftyJSON:
+    :git: https://github.com/SwiftyJSON/SwiftyJSON.git
+
+CHECKOUT OPTIONS:
+  SwiftyJSON:
+    :commit: 42bdb102d2624b143c07850ebdc1537d5b6579b6
+    :git: https://github.com/SwiftyJSON/SwiftyJSON.git
 
 SPEC CHECKSUMS:
+  Alamofire: 4da478599fccddff361205c8929333d7fe18dceb
   AWSAutoScaling: effea7f5902b3c7536fdbc85a169f7a4e4dcbbbc
   AWSCloudWatch: 9349044542bc21b71082c5b62210b88ce882c6f5
   AWSCognito: 3c1209a21a7661c079a59e04f5b5dab4f794561c
@@ -66,5 +82,7 @@ SPEC CHECKSUMS:
   AWSSimpleDB: ba3c2c2d3e8503afcb41c1253f0ed35418a21188
   AWSSNS: d6b874e95c1b9795085bd8e5c9aa0f205a7cbe23
   AWSSQS: 6b150bbdc971582104ddc1f8660581ff9e21a762
+  Gloss: 22fd970682b5449e08e2f41c5087eefe7d7d084b
+  SwiftyJSON: 04ccea08915aa0109039157c7974cf0298da292a
 
 COCOAPODS: 0.39.0

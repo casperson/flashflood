@@ -1,4 +1,5 @@
 source 'https://github.com/CocoaPods/Specs.git'
+use_frameworks!
 pod 'AWSCore'
 pod 'AWSAutoScaling'
 pod 'AWSCloudWatch'
@@ -15,3 +16,6 @@ pod 'AWSSimpleDB'
 pod 'AWSSNS'
 pod 'AWSSQS'
 pod 'AWSCognito'
+pod 'Alamofire', '~> 3.0'
+pod 'Gloss', '~> 0.6'
+pod 'SwiftyJSON', :git => 'https://github.com/SwiftyJSON/SwiftyJSON.git'
