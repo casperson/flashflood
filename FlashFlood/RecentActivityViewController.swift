@@ -26,6 +26,7 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
     var assetCollection: PHAssetCollection = PHAssetCollection()
     var photosAsset: PHFetchResult!
     var albumFound : Bool = false
+    var tabBarIndex: Int?
     let userId = String(NSUserDefaults.standardUserDefaults().integerForKey("userId"))
 
     
@@ -35,6 +36,9 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        self.refreshControl?.addTarget(self, action: "handleRefresh:", forControlEvents: UIControlEvents.ValueChanged)
+        self.postsTable.separatorStyle = UITableViewCellSeparatorStyle.None
         
         let fetchOptions = PHFetchOptions()
         fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
@@ -69,6 +73,15 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
         super.viewWillAppear(animated)
         self.photosAsset = PHAsset.fetchAssetsInAssetCollection(self.assetCollection, options: nil)
         getRecentPosts()
+    }
+    
+    override func viewDidAppear(animated: Bool) {
+        tabBarIndex = self.tabBarController?.selectedIndex
+    }
+    
+    func handleRefresh(refreshControl: UIRefreshControl) {
+        self.postsTable.reloadData()
+        refreshControl.endRefreshing()
     }
     
     let imagePicker = UIImagePickerController()
@@ -109,26 +122,33 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
             //Implement if allowing user to edit the selected image
             //let editedImage = info.objectForKey("UIImagePickerControllerEditedImage") as UIImage
             
-            let priority = DISPATCH_QUEUE_PRIORITY_DEFAULT
-            dispatch_async(dispatch_get_global_queue(priority, 0), {
-                PHPhotoLibrary.sharedPhotoLibrary().performChanges({
-                    let createAssetRequest = PHAssetChangeRequest.creationRequestForAssetFromImage(image)
-                    let assetPlaceholder = createAssetRequest.placeholderForCreatedAsset
-                    if let albumChangeRequest = PHAssetCollectionChangeRequest(forAssetCollection: self.assetCollection, assets: self.photosAsset) {
-                        albumChangeRequest.addAssets([assetPlaceholder!])
-                    }
-                    }, completionHandler: {(success, error) in
-                        dispatch_async(dispatch_get_main_queue(), {
-                            NSLog("Adding Image to Library -> %@", (success ? "Success":"Error!"))
-                            self.performSegueWithIdentifier("Show New Post", sender: self)
-//                            picker.dismissViewControllerAnimated(true, completion: nil)
-                        })
-                })
-                
-            })
+            pickedImage = image
+            self.dismissViewControllerAnimated(true, completion: nil);
+            self.performSegueWithIdentifier("Show New Post", sender: self)
+
+            
+//            let priority = DISPATCH_QUEUE_PRIORITY_DEFAULT
+//            dispatch_async(dispatch_get_global_queue(priority, 0), {
+//                PHPhotoLibrary.sharedPhotoLibrary().performChanges({
+//                    let createAssetRequest = PHAssetChangeRequest.creationRequestForAssetFromImage(image)
+//                    let assetPlaceholder = createAssetRequest.placeholderForCreatedAsset
+//                    if let albumChangeRequest = PHAssetCollectionChangeRequest(forAssetCollection: self.assetCollection, assets: self.photosAsset) {
+//                        albumChangeRequest.addAssets([assetPlaceholder!])
+//                    }
+//                    }, completionHandler: {(success, error) in
+//                        dispatch_async(dispatch_get_main_queue(), {
+//                            NSLog("Adding Image to Library -> %@", (success ? "Success":"Error!"))
+//                            if success {
+                                self.dismissViewControllerAnimated(true, completion: nil);
+                                self.performSegueWithIdentifier("Show New Post", sender: self)
+//                            }
+////                            picker.dismissViewControllerAnimated(true, completion: nil)
+//                        })
+//                })
+//                
+//            })
         }
-        self.dismissViewControllerAnimated(true, completion: nil);
-//        let mediaType = info[UIImagePickerControllerMediaType] as! String
+        //        let mediaType = info[UIImagePickerControllerMediaType] as! String
 //        
 //        if mediaType == kUTTypeImage as String {
 //            let image = info[UIImagePickerControllerOriginalImage] as! UIImage
@@ -179,42 +199,56 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
     @IBAction func downvote(sender: AnyObject) {
         let indexPath = NSIndexPath(forRow: sender.tag, inSection: 0)
         let postInfo = self.posts[sender.tag]
+        let cell = self.tableView.cellForRowAtIndexPath(indexPath) as! PostCell!
+        let cellData = self.posts[indexPath.row]
+        var voteCount = (cellData["VoteCount"] as? Int)!
+        if voteCount == 0 {
+            voteCount = -1
+        }
+        cell.voteCountLabel.text = "\(voteCount)"
+        
         let payload = ["postid": "\(postInfo["PostId"]!)", "userid": userId, "votetype": "Down"]
         VoteApiManager.sharedInstance.vote(payload) {
             (result: String) in
-            if result == "Success" {
-                let cell = self.tableView.cellForRowAtIndexPath(indexPath) as! PostCell!
-                let cellData = self.posts[indexPath.row]
-                var voteCount = (cellData["VoteCount"] as? Int)!
-                if voteCount == 0 {
-                    voteCount = -1
-                }
-                cell.voteCountLabel.text = "\(voteCount)"
-            }
+        
         }
     }
     @IBAction func upvote(sender: AnyObject) {
         let indexPath = NSIndexPath(forRow: sender.tag, inSection: 0)
         let postInfo = self.posts[sender.tag]
+        let cell = self.tableView.cellForRowAtIndexPath(indexPath) as! PostCell!
+        let cellData = self.posts[indexPath.row]
+        let voteCount = (cellData["VoteCount"] as? Int)! + 1
+        cell.voteCountLabel.text = "\(voteCount)"
+        
         let payload = ["postid": "\(postInfo["PostId"]!)", "userid": userId, "votetype": "Up"]
         VoteApiManager.sharedInstance.vote(payload) {
             (result: String) in
-            print(result)
-            if result == "Success" {
-                let cell = self.tableView.cellForRowAtIndexPath(indexPath) as! PostCell!
-                let cellData = self.posts[indexPath.row]
-                let voteCount = (cellData["VoteCount"] as? Int)! + 1
-                cell.voteCountLabel.text = "\(voteCount)"
-            }
+        
         }
     }
     
     private func getRecentPosts() {
-        PostApiManager.sharedInstance.getPosts(nil, longitude: nil) {
+        PostApiManager.sharedInstance.getPosts() {
             (result: [[String:AnyObject]]) in
             self.posts = result
+//            var application: AppDelegate = UIApplication.sharedApplication().delegate as! AppDelegate
+//            var tabbarController = application.tabBarController as UITabBarController
+//            if let tabBarController = self.window!.rootViewController as? UITabBarController {
+                if self.tabBarIndex == 1 {
+                    self.posts.sortInPlace{
+                        (($0 as! Dictionary<String, AnyObject>)["DateTimePosted"] as? Int) > (($1 as! Dictionary<String, AnyObject>)["DateTimePosted"] as? Int)
+                    }
+                }
+                else if self.tabBarIndex == 0 {
+                    self.posts.sortInPlace{
+                        (($0 as! Dictionary<String, AnyObject>)["CommentCount"] as? Int) < (($1 as! Dictionary<String, AnyObject>)["CommentCount"] as? Int)
+                    }
+                }
+//            }
+            
             self.postsTable.reloadData()
-
+            self.postsTable.separatorStyle = UITableViewCellSeparatorStyle.SingleLine
         }   
     }
     
@@ -234,22 +268,24 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
         return cell
     }
     
-    func updateVote(indexPath:NSIndexPath) {
-        let cell = tableView.dequeueReusableCellWithIdentifier("PostCell") as! PostCell
-        let cellData = self.posts[indexPath.row]
-        let voteCount = cellData["VoteCount"] as? Int
-        cell.voteCountLabel.text = "\(voteCount! + 1)"
-        self.tableView.reloadRowsAtIndexPaths([indexPath], withRowAnimation: UITableViewRowAnimation.Top)
-    }
+//    func updateVote(indexPath:NSIndexPath) {
+//        let cell = tableView.dequeueReusableCellWithIdentifier("PostCell") as! PostCell
+//        let cellData = self.posts[indexPath.row]
+//        let voteCount = cellData["VoteCount"] as? Int
+//        cell.voteCountLabel.text = "\(voteCount! + 1)"
+//        self.tableView.reloadRowsAtIndexPaths([indexPath], withRowAnimation: UITableViewRowAnimation.Top)
+//    }
     
     func fillCellData(cell:PostCell, indexPath:NSIndexPath) {
         let cellData = self.posts[indexPath.row]
         let commentsCount = cellData["CommentCount"] as? Int
         let text = cellData["Text"] as? String
         let voteCount = cellData["VoteCount"] as? Int
-        let url = NSURL(string: (cellData["ContentURL"] as? String)!)
+        let url = NSURL(string: (cellData["ThumbnailURL"] as? String)!)
         let data = NSData(contentsOfURL: url!)
-        let postImage = UIImage(data: data!)
+//        if UIImage(data: data!) != nil {
+            let postImage = UIImage(data: data!)
+//        }
         
         let postedDate = (cellData["DateTimePosted"] as? Int)!/1000
         let postDate = NSDate(timeIntervalSince1970: NSTimeInterval(postedDate))
@@ -265,7 +301,10 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
         } else {
             cell.repliesCountLabel.text = "\(commentsCount!) \nReplies"
         }
-//        cell.postImage.contentMode = .ScaleAspectFit
+        cell.postImage.autoresizingMask = [.FlexibleBottomMargin, .FlexibleHeight, .FlexibleRightMargin, .FlexibleLeftMargin, .FlexibleTopMargin, .FlexibleWidth]
+        cell.postImage.contentMode = UIViewContentMode.ScaleAspectFit
+        cell.postImage.layer.cornerRadius = 3.0
+        cell.postImage.clipsToBounds = true
         cell.postImage.image = postImage
         cell.upvoteButton.tag = indexPath.row
         cell.downvoteButton.tag = indexPath.row
@@ -287,20 +326,25 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         if segue.identifier == "Show New Post" {
             if let destVC = segue.destinationViewController as? NewPostViewController {
+                let convertedImageData: NSData = UIImagePNGRepresentation(self.pickedImage!)!
+                destVC.imageData = convertedImageData
+                destVC.uploadImage = self.pickedImage
+
                 let asset: PHAsset = self.photosAsset.lastObject as! PHAsset
                 let localIdentifier = String(asset.valueForKey("localIdentifier")!)
                 let index1 = localIdentifier.startIndex.advancedBy(36)
                 let substring1 = localIdentifier.substringToIndex(index1)
-                let path = "assets-library://asset/asset.JPG?id=" + substring1 + "&ext=JPG"
+                let path = "assets-library://asset/asset.JPG?id=\(substring1)&ext=JPG"
                 
-                PHImageManager.defaultManager().requestImageForAsset(asset, targetSize: CGSizeMake(640, 640), contentMode: .AspectFill, options: nil, resultHandler: {(result, info) in
+                PHImageManager.defaultManager().requestImageForAsset(asset, targetSize: PHImageManagerMaximumSize, contentMode: .AspectFill, options: nil, resultHandler: {(result, info) in
                     if let image = result {
-                        destVC.uploadImage = image
+//                        destVC.uploadImage = self.pickedImage
                     }
                 })
                 
                 PHImageManager.defaultManager().requestImageDataForAsset(asset, options: nil, resultHandler: { (imageData, dataUTI, UIImageOrientation, info) -> Void in
-                        destVC.imageData = imageData
+//                        let convertedImageData: NSData = UIImagePNGRepresentation(self.pickedImage!)!
+//                        destVC.imageData = convertedImageData
                 })
                 destVC.newPostPath = NSURL(string: path)
             }
@@ -310,10 +354,11 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
             if let indexPath = tableView.indexPathForSelectedRow {
                 if let destVC = segue.destinationViewController as? ViewPostViewController {
                     let cellData = posts[indexPath.row]
-                    let url = NSURL(string: (cellData["ContentURL"] as? String)!)
-                    let data = NSData(contentsOfURL: url!)
-                    destVC.image = UIImage(data: data!)
-                    destVC.title = cellData["Text"] as? String
+//                    let url = NSURL(string: (cellData["ContentURL"] as? String)!)
+//                    let data = NSData(contentsOfURL: url!)
+//                    destVC.image = UIImage(data: data!)
+//                    destVC.title = cellData["Text"] as? String
+                    destVC.postId = (cellData["PostId"] as? String)!
                 }
             }
         }

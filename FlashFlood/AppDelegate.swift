@@ -23,6 +23,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             region: DefaultServiceRegionType, credentialsProvider: credentialsProvider)
         
         AWSServiceManager.defaultServiceManager().defaultServiceConfiguration = defaultServiceConfiguration
+        
+        if let tabBarController = self.window!.rootViewController as? UITabBarController {
+            tabBarController.selectedIndex = 1
+        }
+        
+        UIApplication.sharedApplication().statusBarStyle = .LightContent
+//        UINavigationBar.appearance().titleTextAttributes = [
+//            NSFontAttributeName: UIFont(name: "Pacifico-Regular", size: 30)!,
+//            NSForegroundColorAttributeName: UIColor.whiteColor()
+//        ]
         return true
     }
 

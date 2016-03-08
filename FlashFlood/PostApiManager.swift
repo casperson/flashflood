@@ -9,13 +9,18 @@
 import UIKit
 import Alamofire
 import SwiftyJSON
+import MapKit
 
 class PostApiManager : NSObject {
     static let sharedInstance = PostApiManager()
+    var locManager = CLLocationManager()
+
     
-    func getPosts(latitude: Int?, longitude: Int?, onCompletion: (result: [[String:AnyObject]]) -> Void){
+    func getPosts(onCompletion: (result: [[String:AnyObject]]) -> Void){
+        let latitude = locManager.location?.coordinate.latitude
+        let longitude = locManager.location?.coordinate.longitude
         
-        Alamofire.request(.POST, "http://api.flashflood.me/posts", parameters: ["latitude": "40.2454721", "longitude": "111.65965699999998"])
+        Alamofire.request(.POST, "http://api.flashflood.me/posts", parameters: ["latitude": "40.2444", "longitude": "111.6608", "distance": "50000000"])
             .responseJSON { response in
                 switch response.result {
                 case .Success:
@@ -37,9 +42,8 @@ class PostApiManager : NSObject {
 //        return result
 //    }
 
-    func getPost(postId: Int?, onCompletion: (result: [String:AnyObject]) -> Void){
+    func getPost(postId: String?, onCompletion: (result: JSON) -> Void){
         let url = "http://api.flashflood.me/post?postid=\(postId!)"
-//        var arrayObj: [String:AnyObject]
         
         Alamofire.request(.GET, url, parameters: nil)
             .responseJSON { response in
@@ -48,14 +52,15 @@ class PostApiManager : NSObject {
                     if let value = response.result.value {
                         let json = JSON(value)
 //                        arrayObj.add(json)
-                        print(json)
-//                        onCompletion(result: (json[0]. as? [String:AnyObject])!)
+//                        print(json)
+                        onCompletion(result: json)
                     }
                 case .Failure(let error):
                     print(error)
                 }
         }
     }
+    
     private func getUserPosts() {
         
         Alamofire.request(.GET, "https://api.flashflood.me/posts/recent", parameters: nil)

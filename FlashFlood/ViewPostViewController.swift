@@ -7,36 +7,157 @@
 //
 
 import UIKit
+import SwiftyJSON
 
-class ViewPostViewController : UIViewController, UINavigationControllerDelegate{
+class ViewPostViewController : UITableViewController, UINavigationControllerDelegate, UITextFieldDelegate {
     
     // MARK: - Properties
     
-    var image: UIImage!
-    var userId: String?
-    
-    @IBOutlet weak var postVoteCount: UILabel!
-    @IBOutlet weak var postDownvote: UIButton!
-    @IBOutlet weak var postUpvote: UIButton!
-    @IBOutlet weak var commentTableView: UITableView!
-    @IBOutlet weak var postImageView: UIImageView!
-    @IBOutlet weak var postTitle: UILabel!
+//    var image: UIImage!
+    let userId = String(NSUserDefaults.standardUserDefaults().integerForKey("userId"))
+    var postId: String!
+    var comments: [JSON]!
+    var post: JSON!
+    @IBOutlet var postTable: UITableView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-//        self.title = "View Post"
+        self.refreshControl?.addTarget(self, action: "handleRefresh:", forControlEvents: UIControlEvents.ValueChanged)
+       
+        self.title = "View Post"
+        self.navigationController?.navigationBar.titleTextAttributes = [
+            NSFontAttributeName: UIFont(name: "Pacifico-Regular", size: 20)!,
+            NSForegroundColorAttributeName: UIColor.whiteColor()
+        ]
+    }
+    
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
+        getPost()
+    }
+    
+    func handleRefresh(refreshControl: UIRefreshControl) {
+        self.postTable.reloadData()
+        refreshControl.endRefreshing()
+    }
+    
+    func createTextField() -> UITextField{
+        let textView = UITextField(frame: CGRectMake(8.0, 5.0, (ScreenSize.SCREEN_WIDTH * 0.96), 34.0))
+        textView.placeholder = "Reply"
+        textView.backgroundColor = UIColor.whiteColor()
+        textView.font = UIFont.systemFontOfSize(17)
+        textView.borderStyle = UITextBorderStyle.RoundedRect
+        textView.autocorrectionType = UITextAutocorrectionType.No
+        textView.keyboardType = UIKeyboardType.Default
+        textView.returnKeyType = UIReturnKeyType.Done
+        textView.clearButtonMode = UITextFieldViewMode.WhileEditing;
+        textView.contentVerticalAlignment = UIControlContentVerticalAlignment.Center
+        textView.delegate = self
+        return textView
+    }
+    
+    private func getPost() {
+        PostApiManager.sharedInstance.getPost(postId) {
+            (result: JSON) in
+            self.post = result
+            self.comments = result["Comments"].arrayValue
+            self.postTable.reloadData()
+            
+        }
+    }
+    
+    private func createComment(commentText: String!) {
+        let payload = ["userid": "\(userId)", "postid": "\(postId)", "text": "\(commentText)"]
+        CommentApiManager.sharedInstance.postComment(payload) {
+            (result: AnyObject) in
+//            self.getPost()
+//            self.postTable.reloadData()
+            
+        }
+    }
+    
+    @IBAction func upvote(sender: AnyObject) {
+        let indexPath = NSIndexPath(forRow: sender.tag, inSection: 0)
+        let postInfo = self.post[sender.tag]
+        let cell = self.tableView.cellForRowAtIndexPath(indexPath) as! SinglePostCell!
+        let cellData = self.post[indexPath.row]
+        let voteCount = (cellData["VoteCount"].intValue) + 1
+        cell.voteCountLabel.text = "\(voteCount)"
+        let payload = ["postid": "\(postInfo["PostId"])", "userid": userId, "votetype": "Up"]
+        VoteApiManager.sharedInstance.vote(payload) {
+            (result: String) in
+            
+        }
+
+    }
+    
+    @IBAction func downvote(sender: AnyObject) {
+        let indexPath = NSIndexPath(forRow: sender.tag, inSection: 0)
+        let postInfo = self.post[sender.tag]
+        let cell = self.tableView.cellForRowAtIndexPath(indexPath) as! SinglePostCell!
+        let cellData = self.post[indexPath.row]
+        var voteCount = (cellData["VoteCount"].intValue)
+        if voteCount == 0 {
+            voteCount = -1
+        }
+        cell.voteCountLabel.text = "\(voteCount)"
+        let payload = ["postid": "\(postInfo["PostId"])", "userid": userId, "votetype": "Down"]
+        VoteApiManager.sharedInstance.vote(payload) {
+            (result: String) in
+            
+        }
+    }
+    
+    func preparePostCell(cell:SinglePostCell, indexPath:NSIndexPath) {
+        let text = self.post["Text"].stringValue
+        let voteCount = self.post["VoteCount"].intValue
+        let url = NSURL(string: self.post["ContentURL"].stringValue)
+        let data = NSData(contentsOfURL: url!)
+        let postImage = UIImage(data: data!)
+        
+        cell.titleLabel.text = text
+        cell.voteCountLabel.text = "\(voteCount)"
+        cell.postImageView.layer.cornerRadius = 3.0
+        cell.postImageView.clipsToBounds = true
+        cell.postImageView.autoresizingMask = [.FlexibleBottomMargin, .FlexibleHeight, .FlexibleRightMargin, .FlexibleLeftMargin, .FlexibleTopMargin, .FlexibleWidth]
+        cell.postImageView.contentMode = UIViewContentMode.ScaleAspectFit
+        cell.postImageView.image = postImage
+        cell.upvoteButton.tag = indexPath.section
+        cell.downvoteButton.tag = indexPath.section 
+        cell.upvoteButton.addTarget(self, action: "upvote:", forControlEvents: .TouchUpInside)
+        cell.downvoteButton.addTarget(self, action: "downvote:", forControlEvents: .TouchUpInside)
+    }
+    
+    func prepareCommentCell(cell:CommentCell, indexPath:NSIndexPath) {
+        let cellData = self.comments[indexPath.row]
+        let name = cellData["PostUsername"].stringValue
+        let comment = cellData["Text"].stringValue
+        let voteCount = cellData["VoteCount"].intValue
+        
+        
+        // Adding an out going chat bubble
+        let commentBubbleData = ChatBubbleData(text: comment, image: nil, date: NSDate(), type: .Opponent)
+        let commentBubble = ChatBubble(data: commentBubbleData, startY: 5)
+        cell.commentBubbleView.addSubview(commentBubble)
+        cell.commentUserLabel.text = name
+        cell.voteCountLabel.text = "\(voteCount)"
+        
+
+//        let text = self.post["Text"].stringValue
+//        let voteCount = self.post["VoteCount"].intValue
+//        let url = NSURL(string: self.post["ContentURL"].stringValue)
+//        let data = NSData(contentsOfURL: url!)
+//        let postImage = UIImage(data: data!)
 //        
-//        let leftButton =  UIBarButtonItem(title: "Left Button", style: UIBarButtonItemStyle.Plain, target: self, action: nil)
-//        let rightButton = UIBarButtonItem(title: "Right Button", style: UIBarButtonItemStyle.Plain, target: self, action: nil)
-//        
-//        self.navigationItem.leftBarButtonItem = leftButton
-//        self.navigationItem.rightBarButtonItem = rightButton
-        // Do any additional setup after loading the view, typically from a nib.
-        userId = String(NSUserDefaults.standardUserDefaults().integerForKey("userId"))
-        postImageView.contentMode = .ScaleAspectFit
-        postImageView.image = image
-        postTitle.text = title
+//        cell.titleLabel.text = text
+//        cell.voteCountLabel.text = "\(voteCount)"
+//        //        cell.postImage.contentMode = .ScaleAspectFit
+//        cell.postImageView.image = postImage
+//        cell.upvoteButton.tag = indexPath.section
+//        cell.downvoteButton.tag = indexPath.section
+//        cell.upvoteButton.addTarget(self, action: "upvote:", forControlEvents: .TouchUpInside)
+//        cell.downvoteButton.addTarget(self, action: "downvote:", forControlEvents: .TouchUpInside)
     }
     
     // MARK: - Segues
@@ -44,38 +165,63 @@ class ViewPostViewController : UIViewController, UINavigationControllerDelegate{
     
     // MARK: - Table view data source
     
-    func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        return postCellAtIndexPath(indexPath)
+    override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
+        
+        if indexPath.section == 0 {
+            let cell = tableView.dequeueReusableCellWithIdentifier("SinglePostCell", forIndexPath: indexPath) as! SinglePostCell
+            preparePostCell(cell, indexPath: indexPath)
+            return cell
+        }
+        else if indexPath.section == 1{
+            let cell = tableView.dequeueReusableCellWithIdentifier("CommentCell", forIndexPath: indexPath) as! CommentCell
+            prepareCommentCell(cell, indexPath: indexPath)
+            return cell
+        }
+        else {
+            let cell = tableView.dequeueReusableCellWithIdentifier("ReplyCell", forIndexPath: indexPath) as! ReplyCell
+            postTable.tableFooterView  = cell
+            cell.replyTextField.delegate = self
+            return cell
+        }
     }
     
-    func postCellAtIndexPath(indexPath:NSIndexPath) -> CommentCell {
-        let cell = commentTableView.dequeueReusableCellWithIdentifier("CommentCell") as! CommentCell
-//        fillCellData(cell, indexPath: indexPath)
-        return cell
+    override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        var rowCount = 0
+        if section == 0 {
+            rowCount = self.post != nil ? 1 : 0
+        }
+        if section == 1 {
+            rowCount = self.comments != nil ? self.comments.count : 0
+        }
+        if section == 2 {
+            rowCount = 1
+        }
+        return rowCount
     }
     
-//    func fillCellData(cell:PostCell, indexPath:NSIndexPath) {
-//        let cellData = self.posts[indexPath.row]
-//        let commentsCount = (cellData["CommentCount"] != nil) ? cellData["CommentCount"] as? String : "0 Replies"
-//        let text = cellData["Text"] as? String
-//        let voteCount = (cellData["VoteCount"] != nil) ? cellData["VoteCount"] as? String : "0"
-//        let url = NSURL(string: (cellData["ContentURL"] as? String)!)
-//        let data = NSData(contentsOfURL: url!)
-//        let postImage = UIImage(data: data!)
-//        
-//        let postedDate = (cellData["DateTimePosted"] as? Int)!/1000
-//        let postDate = NSDate(timeIntervalSince1970: NSTimeInterval(postedDate))
-//        let currentDate = NSDate()
-//        let datecomponents = calendar.components(NSCalendarUnit.Hour, fromDate: postDate, toDate: currentDate, options: [])
-//        let timeElapsed = String(datecomponents.hour)
-//        
-//        cell.titleLabel.text = text
-//        cell.timeElapsedLabel.text = timeElapsed + "h"
-//        cell.voteCountLabel.text = voteCount
-//        cell.repliesCountLabel.text = "\(commentsCount) Replies"
-//        cell.postImage.contentMode = .ScaleAspectFit
-//        cell.postImage.image = postImage
-//    }
-
+    override func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
+        if indexPath.section == 0 {
+            let sizeRect = UIScreen.mainScreen().bounds
+            return ((sizeRect.height) * 0.75)
+        } else if indexPath.section == 1 {
+            return 100
+        }
+        else {
+            return 44
+        }
+    }
+    
+    override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
+        return 3
+    }
+    
+    func textFieldShouldReturn(textField: UITextField) -> Bool {
+        createComment(textField.text)
+        var newComment: [String:String]
+        newComment = ["PostUsername": "OriginalPoster", "Text": textField.text!, "VoteCount": "0"]
+        self.comments.append(JSON(newComment))
+        self.postTable.reloadData()
+        return true
+    }
     
 }

@@ -10,10 +10,10 @@ import UIKit
 
 class CommentCell: UITableViewCell {
     
-    @IBOutlet weak var commentUser: UILabel!
-    
-    @IBOutlet weak var comment: UILabel!
-    
-    @IBOutlet weak var voteCount: UILabel!
-    
+    @IBOutlet weak var commentUserLabel: UILabel!
+    @IBOutlet weak var commentBubbleView: UIView!
+    @IBOutlet weak var upvoteButton: UIButton!
+    @IBOutlet weak var downvoteButton: UIButton!
+    @IBOutlet weak var voteCountLabel: UILabel!
+   
 }

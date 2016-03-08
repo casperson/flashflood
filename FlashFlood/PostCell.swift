@@ -17,5 +17,6 @@ class PostCell: UITableViewCell {
     @IBOutlet var postImage: UIImageView!
     @IBOutlet weak var downvoteButton: UIButton!
     @IBOutlet weak var upvoteButton: UIButton!
+
 }
 
