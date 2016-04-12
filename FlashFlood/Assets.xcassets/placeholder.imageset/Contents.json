@@ -2,17 +2,17 @@
   "images" : [
     {
       "idiom" : "universal",
-      "filename" : "the-best-picture-on-the-internet.jpg",
+      "filename" : "placeholder.png",
       "scale" : "1x"
     },
     {
       "idiom" : "universal",
-      "filename" : "the-best-picture-on-the-internet-1.jpg",
+      "filename" : "placeholder-2.png",
       "scale" : "2x"
     },
     {
       "idiom" : "universal",
-      "filename" : "the-best-picture-on-the-internet-2.jpg",
+      "filename" : "placeholder-1.png",
       "scale" : "3x"
     }
   ],

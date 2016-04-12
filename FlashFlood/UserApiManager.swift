@@ -24,12 +24,12 @@ class UserApiManager : NSObject, CLLocationManagerDelegate {
         let id = UIDevice.currentDevice().identifierForVendor!.UUIDString;
 //        var latitude: CLLocationDegrees!
 //        var longitude: CLLocationDegrees!
-        locManager.startUpdatingLocation()
+//        locManager.startUpdatingLocation()
         
-        if locManager.location?.coordinate.longitude != nil {
-            
-            let latitude = locManager.location?.coordinate.latitude
-            let longitude = locManager.location?.coordinate.longitude
+//        if locManager.location?.coordinate.longitude != nil {
+        
+            let latitude = userDefaults.doubleForKey("latitude")
+            let longitude = userDefaults.doubleForKey("longitude")
             
             let newUser = ["latitude": "\(latitude)", "longitude": "\(longitude)", "DeviceID": "\(id)"]
 
@@ -39,14 +39,15 @@ class UserApiManager : NSObject, CLLocationManagerDelegate {
                     case .Success:
                         if let value = response.result.value {
                             let json = JSON(value)
-                            self.userDefaults.setValue(json["Item"]["UniqueUserID"].int, forKey: "userId")
+                            print(json["token"])
+                            self.userDefaults.setValue(json["token"].string, forKey: "token")
                             onCompletion(result: "Success")
                         }
                     case .Failure(let error):
                         print(error)
                     }
             }
-        }
+//        }
     }
 
     

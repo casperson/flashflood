@@ -11,16 +11,30 @@ import Alamofire
 import SwiftyJSON
 import MapKit
 
-class PostApiManager : NSObject {
+class PostApiManager : NSObject, CLLocationManagerDelegate {
     static let sharedInstance = PostApiManager()
     var locManager = CLLocationManager()
+    var timer = NSTimer()
 
+    func initLocation() {
+        locManager.delegate = self
+        locManager.requestWhenInUseAuthorization()
+        locManager.startUpdatingLocation()
+    }
+    
+    func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        print("updated Locations")
+    }
     
     func getPosts(onCompletion: (result: [[String:AnyObject]]) -> Void){
-        let latitude = locManager.location?.coordinate.latitude
-        let longitude = locManager.location?.coordinate.longitude
+        let latitude = NSUserDefaults.standardUserDefaults().stringForKey("latitude")
+        let longitude = NSUserDefaults.standardUserDefaults().stringForKey("latitude")
+        let accessToken = NSUserDefaults.standardUserDefaults().stringForKey("token")
+        let headers = [
+            "x-access-token": accessToken!
+        ]
         
-        Alamofire.request(.POST, "http://api.flashflood.me/posts", parameters: ["latitude": "40.2444", "longitude": "111.6608", "distance": "50000000"])
+        Alamofire.request(.POST, "http://api.flashflood.me/posts", parameters: ["latitude": latitude!, "longitude": longitude!, "distance": "50000000"], headers: headers)
             .responseJSON { response in
                 switch response.result {
                 case .Success:
@@ -34,6 +48,7 @@ class PostApiManager : NSObject {
         }
     }
     
+    
 //    func getRecentPosts() -> [[String:AnyObject]]{
 //        getPosts(nil, longitude: nil) {
 //            (result: [[String:AnyObject]]) in
@@ -45,7 +60,12 @@ class PostApiManager : NSObject {
     func getPost(postId: String?, onCompletion: (result: JSON) -> Void){
         let url = "http://api.flashflood.me/post?postid=\(postId!)"
         
-        Alamofire.request(.GET, url, parameters: nil)
+        let accessToken = NSUserDefaults.standardUserDefaults().stringForKey("token")
+        let headers = [
+            "x-access-token": accessToken!
+        ]
+        
+        Alamofire.request(.GET, url, headers: headers, parameters: nil)
             .responseJSON { response in
                 switch response.result {
                 case .Success:

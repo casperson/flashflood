@@ -11,13 +11,15 @@ import Alamofire
 import SwiftyJSON
 import MobileCoreServices
 import Photos
+import Kingfisher
 
 let albumName = "Flashflood"
 
-class RecentActivityViewController : UITableViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+class RecentActivityViewController : UITableViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, NSURLSessionDelegate {
     
     // MARK: - Properties
     
+    private let userDefaults = NSUserDefaults.standardUserDefaults()
     var posts = [[String:AnyObject]]()
     let calendar = NSCalendar.currentCalendar()
     var pickedImage: UIImage?
@@ -27,7 +29,10 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
     var photosAsset: PHFetchResult!
     var albumFound : Bool = false
     var tabBarIndex: Int?
-    let userId = String(NSUserDefaults.standardUserDefaults().integerForKey("userId"))
+    let userId = String(NSUserDefaults.standardUserDefaults().stringForKey("token"))
+    var postTimer = NSTimer()
+    var userTimer = NSTimer()
+    var locManager = CLLocationManager()
 
     
     @IBOutlet weak var viewPost: UIButton!
@@ -40,48 +45,37 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
         self.refreshControl?.addTarget(self, action: "handleRefresh:", forControlEvents: UIControlEvents.ValueChanged)
         self.postsTable.separatorStyle = UITableViewCellSeparatorStyle.None
         
-        let fetchOptions = PHFetchOptions()
-        fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
-        let collection:PHFetchResult = PHAssetCollection.fetchAssetCollectionsWithType(.Album, subtype: .Any, options: fetchOptions)
-        
-        if let first_Obj: AnyObject = collection.firstObject {
-            self.albumFound = true
-            self.assetCollection = first_Obj as! PHAssetCollection
-        } else {
-            var albumPlaceholder:PHObjectPlaceholder!
-            NSLog("\nFolder \"%@\" does not exist\nCreating now...", albumName)
-            PHPhotoLibrary.sharedPhotoLibrary().performChanges({
-                let request = PHAssetCollectionChangeRequest.creationRequestForAssetCollectionWithTitle(albumName)
-                albumPlaceholder = request.placeholderForCreatedAssetCollection
-                },
-                completionHandler: {(success:Bool, error:NSError?)in
-                    if(success){
-                        print("Successfully created folder")
-                        self.albumFound = true
-                        let collection = PHAssetCollection.fetchAssetCollectionsWithLocalIdentifiers([albumPlaceholder.localIdentifier], options: nil)
-                        self.assetCollection = collection.firstObject as! PHAssetCollection
-                    }else{
-                        print("Error creating folder")
-                        self.albumFound = false
-                    }
-            })
-        }
-
     }
     
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
-        self.photosAsset = PHAsset.fetchAssetsInAssetCollection(self.assetCollection, options: nil)
-        getRecentPosts()
+//        self.photosAsset = PHAsset.fetchAssetsInAssetCollection(self.assetCollection, options: nil)
+        let notFirstLaunch = userDefaults.boolForKey("FirstLaunch")
+        locManager.requestWhenInUseAuthorization()
+        locManager.startUpdatingLocation()
+        
+        if notFirstLaunch  {
+            self.postTimer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: #selector(RecentActivityViewController.getRecentPosts), userInfo: nil, repeats: true)
+            print("Not First Launch")
+        } else {
+            self.userTimer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: #selector(RecentActivityViewController.createUser), userInfo: nil, repeats: true)
+            
+            userDefaults.setBool(true, forKey: "FirstLaunch")
+        }
     }
+    
     
     override func viewDidAppear(animated: Bool) {
         tabBarIndex = self.tabBarController?.selectedIndex
     }
     
     func handleRefresh(refreshControl: UIRefreshControl) {
-        self.postsTable.reloadData()
+        getRecentPosts()
         refreshControl.endRefreshing()
+    }
+    
+    func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        print("updated Locations")
     }
     
     let imagePicker = UIImagePickerController()
@@ -123,57 +117,9 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
             //let editedImage = info.objectForKey("UIImagePickerControllerEditedImage") as UIImage
             
             pickedImage = image
-            self.dismissViewControllerAnimated(true, completion: nil);
+            self.dismissViewControllerAnimated(true, completion: nil)
             self.performSegueWithIdentifier("Show New Post", sender: self)
-
-            
-//            let priority = DISPATCH_QUEUE_PRIORITY_DEFAULT
-//            dispatch_async(dispatch_get_global_queue(priority, 0), {
-//                PHPhotoLibrary.sharedPhotoLibrary().performChanges({
-//                    let createAssetRequest = PHAssetChangeRequest.creationRequestForAssetFromImage(image)
-//                    let assetPlaceholder = createAssetRequest.placeholderForCreatedAsset
-//                    if let albumChangeRequest = PHAssetCollectionChangeRequest(forAssetCollection: self.assetCollection, assets: self.photosAsset) {
-//                        albumChangeRequest.addAssets([assetPlaceholder!])
-//                    }
-//                    }, completionHandler: {(success, error) in
-//                        dispatch_async(dispatch_get_main_queue(), {
-//                            NSLog("Adding Image to Library -> %@", (success ? "Success":"Error!"))
-//                            if success {
-                                self.dismissViewControllerAnimated(true, completion: nil);
-                                self.performSegueWithIdentifier("Show New Post", sender: self)
-//                            }
-////                            picker.dismissViewControllerAnimated(true, completion: nil)
-//                        })
-//                })
-//                
-//            })
         }
-        //        let mediaType = info[UIImagePickerControllerMediaType] as! String
-//        
-//        if mediaType == kUTTypeImage as String {
-//            let image = info[UIImagePickerControllerOriginalImage] as! UIImage
-        
-//            UIImageWriteToSavedPhotosAlbum(image, self,
-//                    "image:didFinishSavingWithError:contextInfo:", nil)
-//            } else if mediaType == kUTTypeMovie as String) {
-//                // Code to support video here
-//            }
-//            
-//            let imageUrl          = info[UIImagePickerControllerReferenceURL] as! NSURL
-//            let imageName         = imageUrl.lastPathComponent
-//            let documentDirectory = NSSearchPathForDirectoriesInDomains(.DocumentDirectory, .UserDomainMask, true).first as String!
-//            let newPostDirectory  = NSURL(fileURLWithPath: documentDirectory)
-//            let localPath         = newPostDirectory.URLByAppendingPathComponent(imageName!)
-//            let path              = localPath.relativePath
-//            
-//            if mediaType == kUTTypeImage as String {
-//                pickedImage = info[UIImagePickerControllerOriginalImage] as! UIImage
-//                let data    = pickedImage!.lowQualityJPEGNSData
-//                data.writeToFile(localPath.absoluteString, atomically: true)
-//                newPostPath = NSURL(fileURLWithPath: path!)
-//                performSegueWithIdentifier("Show New Post", sender: self)
-//            }
-        
     }
     
     func image(image: UIImage, didFinishSavingWithError error: NSErrorPointer, contextInfo:UnsafePointer<Void>) {
@@ -228,28 +174,60 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
         }
     }
     
-    private func getRecentPosts() {
-        PostApiManager.sharedInstance.getPosts() {
-            (result: [[String:AnyObject]]) in
-            self.posts = result
-//            var application: AppDelegate = UIApplication.sharedApplication().delegate as! AppDelegate
-//            var tabbarController = application.tabBarController as UITabBarController
-//            if let tabBarController = self.window!.rootViewController as? UITabBarController {
-                if self.tabBarIndex == 1 {
-                    self.posts.sortInPlace{
-                        (($0 as! Dictionary<String, AnyObject>)["DateTimePosted"] as? Int) > (($1 as! Dictionary<String, AnyObject>)["DateTimePosted"] as? Int)
+    @objc private func createUser() {
+        print(locManager.location?.coordinate.latitude)
+        if locManager.location != nil {
+            userDefaults.setDouble((locManager.location?.coordinate.latitude)!, forKey: "latitude")
+            userDefaults.setDouble((locManager.location?.coordinate.longitude)!, forKey: "longitude")
+            UserApiManager.sharedInstance.createUser() {
+                (result: JSON) in
+                self.userTimer.invalidate()
+                self.getRecentPosts()
+                print(result)
+            }
+        }
+    }
+    
+    @objc private func getRecentPosts() {
+        print(locManager.location?.coordinate.latitude)
+        if locManager.location != nil {
+            userDefaults.setDouble((locManager.location?.coordinate.latitude)!, forKey: "latitude")
+            userDefaults.setDouble((locManager.location?.coordinate.longitude)!, forKey: "longitude")
+            var urls = [NSURL]()
+            PostApiManager.sharedInstance.getPosts() {
+                (result: [[String:AnyObject]]) in
+                self.posts = result
+    //            var application: AppDelegate = UIApplication.sharedApplication().delegate as! AppDelegate
+    //            var tabbarController = application.tabBarController as UITabBarController
+    //            if let tabBarController = self.window!.rootViewController as? UITabBarController {
+                    if self.tabBarIndex == 1 {
+                        self.posts.sortInPlace{
+                            (($0 as! Dictionary<String, AnyObject>)["DateTimePosted"] as? Int) > (($1 as! Dictionary<String, AnyObject>)["DateTimePosted"] as? Int)
+                        }
                     }
-                }
-                else if self.tabBarIndex == 0 {
-                    self.posts.sortInPlace{
-                        (($0 as! Dictionary<String, AnyObject>)["CommentCount"] as? Int) < (($1 as! Dictionary<String, AnyObject>)["CommentCount"] as? Int)
+                    else if self.tabBarIndex == 0 {
+                        self.posts.sortInPlace{
+                            (($0 as! Dictionary<String, AnyObject>)["VoteCount"] as? Int) > (($1 as! Dictionary<String, AnyObject>)["VoteCount"] as? Int)
+                        }
                     }
+    //            }
+                
+                for post in self.posts {
+                    let tURL = NSURL(string: (post["ThumbnailURL"] as? String)!)
+                    let cURL = NSURL(string: (post["ContentURL"] as? String)!)
+                    urls.append(tURL!)
+                    urls.append(cURL!)
                 }
-//            }
-            
-            self.postsTable.reloadData()
-            self.postsTable.separatorStyle = UITableViewCellSeparatorStyle.SingleLine
-        }   
+                let prefetcher = ImagePrefetcher(urls: urls, optionsInfo: nil, progressBlock: nil, completionHandler: {
+                    (skippedResources, failedResources, completedResources) -> () in
+                    print(failedResources)
+                })
+                prefetcher.start()
+                self.postsTable.reloadData()
+                self.postsTable.separatorStyle = UITableViewCellSeparatorStyle.SingleLine
+                self.postTimer.invalidate()
+            }
+        }
     }
     
     // MARK: - Table view data source
@@ -268,23 +246,15 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
         return cell
     }
     
-//    func updateVote(indexPath:NSIndexPath) {
-//        let cell = tableView.dequeueReusableCellWithIdentifier("PostCell") as! PostCell
-//        let cellData = self.posts[indexPath.row]
-//        let voteCount = cellData["VoteCount"] as? Int
-//        cell.voteCountLabel.text = "\(voteCount! + 1)"
-//        self.tableView.reloadRowsAtIndexPaths([indexPath], withRowAnimation: UITableViewRowAnimation.Top)
-//    }
-    
     func fillCellData(cell:PostCell, indexPath:NSIndexPath) {
         let cellData = self.posts[indexPath.row]
         let commentsCount = cellData["CommentCount"] as? Int
         let text = cellData["Text"] as? String
         let voteCount = cellData["VoteCount"] as? Int
         let url = NSURL(string: (cellData["ThumbnailURL"] as? String)!)
-        let data = NSData(contentsOfURL: url!)
+//        let data = NSData(contentsOfURL: url!)
 //        if UIImage(data: data!) != nil {
-            let postImage = UIImage(data: data!)
+//            let postImage = UIImage(data: data!)
 //        }
         
         let postedDate = (cellData["DateTimePosted"] as? Int)!/1000
@@ -305,7 +275,19 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
         cell.postImage.contentMode = UIViewContentMode.ScaleAspectFit
         cell.postImage.layer.cornerRadius = 3.0
         cell.postImage.clipsToBounds = true
-        cell.postImage.image = postImage
+        cell.postImage.kf_setImageWithURL(url!,
+            placeholderImage: UIImage(named: "placeholder"),
+            optionsInfo: nil,
+            completionHandler: { (image, error, cacheType, imageURL) -> () in
+                if image != nil {
+//                    print("Downloaded and set!")
+                }
+                if error != nil {
+                    print("The image isn't there yet.")
+                }
+            }
+        )
+//        cell.postImage.image = postImage
         cell.upvoteButton.tag = indexPath.row
         cell.downvoteButton.tag = indexPath.row
         cell.upvoteButton.addTarget(self, action: "upvote:", forControlEvents: .TouchUpInside)
@@ -326,27 +308,10 @@ class RecentActivityViewController : UITableViewController, UIImagePickerControl
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         if segue.identifier == "Show New Post" {
             if let destVC = segue.destinationViewController as? NewPostViewController {
-                let convertedImageData: NSData = UIImagePNGRepresentation(self.pickedImage!)!
-                destVC.imageData = convertedImageData
+//                let convertedImageData: NSData = UIImagePNGRepresentation(self.pickedImage!)!
+//                destVC.imageData = convertedImageData
                 destVC.uploadImage = self.pickedImage
 
-                let asset: PHAsset = self.photosAsset.lastObject as! PHAsset
-                let localIdentifier = String(asset.valueForKey("localIdentifier")!)
-                let index1 = localIdentifier.startIndex.advancedBy(36)
-                let substring1 = localIdentifier.substringToIndex(index1)
-                let path = "assets-library://asset/asset.JPG?id=\(substring1)&ext=JPG"
-                
-                PHImageManager.defaultManager().requestImageForAsset(asset, targetSize: PHImageManagerMaximumSize, contentMode: .AspectFill, options: nil, resultHandler: {(result, info) in
-                    if let image = result {
-//                        destVC.uploadImage = self.pickedImage
-                    }
-                })
-                
-                PHImageManager.defaultManager().requestImageDataForAsset(asset, options: nil, resultHandler: { (imageData, dataUTI, UIImageOrientation, info) -> Void in
-//                        let convertedImageData: NSData = UIImagePNGRepresentation(self.pickedImage!)!
-//                        destVC.imageData = convertedImageData
-                })
-                destVC.newPostPath = NSURL(string: path)
             }
         }
         

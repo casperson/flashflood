@@ -94,6 +94,11 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>Kingfisher.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>Pods.xcscheme</key>
 		<dict>
 			<key>isShown</key>
@@ -137,7 +142,7 @@
 			<key>primary</key>
 			<true/>
 		</dict>
-		<key>5727D5C2DE02AC675A570060CA18BA19</key>
+		<key>4C5B80191B9D4115A71665CB171A45E0</key>
 		<dict>
 			<key>primary</key>
 			<true/>
@@ -167,17 +172,22 @@
 			<key>primary</key>
 			<true/>
 		</dict>
+		<key>AFDF55F29DF49F8663C71FDCB6B47BF8</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>B07B012AE17952EE777271E277F90284</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 		<key>BC279E1A4A79751E826180F63A851E07</key>
 		<dict>
 			<key>primary</key>
 			<true/>
 		</dict>
 		<key>BD02CE344851D72142B287462B4106C0</key>
-		<dict>
-			<key>primary</key>
-			<true/>
-		</dict>
-		<key>C1363FBC54DED32A996269463E52C4FC</key>
 		<dict>
 			<key>primary</key>
 			<true/>
@@ -192,17 +202,17 @@
 			<key>primary</key>
 			<true/>
 		</dict>
+		<key>F91226101ECE8FCFD221A3EC54481F82</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 		<key>F9D3017FDE322CAF12E15A42B3977BFD</key>
 		<dict>
 			<key>primary</key>
 			<true/>
 		</dict>
 		<key>FA4EC47CECE5DCE24241F8B91EC27B05</key>
-		<dict>
-			<key>primary</key>
-			<true/>
-		</dict>
-		<key>FD730667634D830EEAC62832CCCBB290</key>
 		<dict>
 			<key>primary</key>
 			<true/>

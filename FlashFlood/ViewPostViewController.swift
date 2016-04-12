@@ -18,22 +18,43 @@ class ViewPostViewController : UITableViewController, UINavigationControllerDele
     var postId: String!
     var comments: [JSON]!
     var post: JSON!
+    var loaderConfig:SwiftLoader.Config = SwiftLoader.Config()
+    
     @IBOutlet var postTable: UITableView!
+    
+    @IBAction func flagPost(sender: UIButton) {
+        let flagViewController = UITableViewController()
+        flagViewController.modalPresentationStyle = UIModalPresentationStyle.Popover
+        
+        presentViewController(flagViewController, animated: true, completion: nil)
+        
+        let popoverPresentationController = flagViewController.popoverPresentationController
+        popoverPresentationController?.sourceView = sender
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        self.refreshControl?.addTarget(self, action: "handleRefresh:", forControlEvents: UIControlEvents.ValueChanged)
+        self.refreshControl?.addTarget(self, action: #selector(ViewPostViewController.handleRefresh(_:)), forControlEvents: UIControlEvents.ValueChanged)
        
         self.title = "View Post"
         self.navigationController?.navigationBar.titleTextAttributes = [
             NSFontAttributeName: UIFont(name: "Pacifico-Regular", size: 20)!,
             NSForegroundColorAttributeName: UIColor.whiteColor()
         ]
+        
+        loaderConfig.size = 150
+        loaderConfig.spinnerColor = UIColor(red: 97.0/255, green: 184.0/255, blue: 223.0/255, alpha: 1.0)
+        loaderConfig.foregroundColor = .whiteColor()
+        loaderConfig.foregroundAlpha = 0.5
+        
+        SwiftLoader.setConfig(loaderConfig)
+        SwiftLoader.show("Loading...", animated: true)
     }
     
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
+        
         getPost()
     }
     
@@ -60,6 +81,7 @@ class ViewPostViewController : UITableViewController, UINavigationControllerDele
     private func getPost() {
         PostApiManager.sharedInstance.getPost(postId) {
             (result: JSON) in
+            SwiftLoader.hide()
             self.post = result
             self.comments = result["Comments"].arrayValue
             self.postTable.reloadData()
@@ -71,6 +93,7 @@ class ViewPostViewController : UITableViewController, UINavigationControllerDele
         let payload = ["userid": "\(userId)", "postid": "\(postId)", "text": "\(commentText)"]
         CommentApiManager.sharedInstance.postComment(payload) {
             (result: AnyObject) in
+            
 //            self.getPost()
 //            self.postTable.reloadData()
             
@@ -122,7 +145,18 @@ class ViewPostViewController : UITableViewController, UINavigationControllerDele
         cell.postImageView.clipsToBounds = true
         cell.postImageView.autoresizingMask = [.FlexibleBottomMargin, .FlexibleHeight, .FlexibleRightMargin, .FlexibleLeftMargin, .FlexibleTopMargin, .FlexibleWidth]
         cell.postImageView.contentMode = UIViewContentMode.ScaleAspectFit
-        cell.postImageView.image = postImage
+        cell.postImageView.kf_setImageWithURL(url!,
+            placeholderImage: UIImage(named: "placeholder"),
+            optionsInfo: nil,
+            completionHandler: { (image, error, cacheType, imageURL) -> () in
+                if image != nil {
+                    print("Downloaded and set!")
+                }
+                if error != nil {
+                    print("The image isn't there yet.")
+                }
+            }
+        )
         cell.upvoteButton.tag = indexPath.section
         cell.downvoteButton.tag = indexPath.section 
         cell.upvoteButton.addTarget(self, action: "upvote:", forControlEvents: .TouchUpInside)
@@ -172,7 +206,7 @@ class ViewPostViewController : UITableViewController, UINavigationControllerDele
             preparePostCell(cell, indexPath: indexPath)
             return cell
         }
-        else if indexPath.section == 1{
+        else if indexPath.section == 1 {
             let cell = tableView.dequeueReusableCellWithIdentifier("CommentCell", forIndexPath: indexPath) as! CommentCell
             prepareCommentCell(cell, indexPath: indexPath)
             return cell
@@ -218,7 +252,8 @@ class ViewPostViewController : UITableViewController, UINavigationControllerDele
     func textFieldShouldReturn(textField: UITextField) -> Bool {
         createComment(textField.text)
         var newComment: [String:String]
-        newComment = ["PostUsername": "OriginalPoster", "Text": textField.text!, "VoteCount": "0"]
+        newComment = ["PostUsername": "Generating...", "Text": textField.text!, "VoteCount": "0"]
+        textField.text = ""
         self.comments.append(JSON(newComment))
         self.postTable.reloadData()
         return true

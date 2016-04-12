@@ -18,12 +18,13 @@ class NewPostViewController : UIViewController {
     
     var locManager = CLLocationManager()
     var userId: String!
-    var newPostPath: NSURL!
+//    var newPostPath: NSURL!
     var uploadImage: UIImage!
-    var imageData: NSData!
+//    var imageData: NSData!
     let postURL = "http://api.flashflood.me/post"
-    var photosAsset: PHFetchResult!
+//    var photosAsset: PHFetchResult!
     var index: Int = 0
+    var loaderConfig:SwiftLoader.Config = SwiftLoader.Config()
     
     @IBOutlet weak var postTitle: UITextField!
     @IBOutlet weak var imageView: UIImageView!
@@ -37,10 +38,25 @@ class NewPostViewController : UIViewController {
         showCameraPhoto()
     }
     
+    
     @IBAction func savePost(sender: AnyObject) {
+        loaderConfig.size = 150
+        loaderConfig.spinnerColor = UIColor(red: 97.0/255, green: 184.0/255, blue: 223.0/255, alpha: 1.0)
+        loaderConfig.foregroundColor = .whiteColor()
+        loaderConfig.foregroundAlpha = 0.5
+        
+        let accessToken = NSUserDefaults.standardUserDefaults().stringForKey("token")
+        let headers = [
+            "x-access-token": accessToken!
+        ]
+        
+        SwiftLoader.setConfig(loaderConfig)
+        SwiftLoader.show("Saving...", animated: true)
+//        self.performSegueWithIdentifier("unwindToMenu", sender: self)
         Alamofire.upload(
             .POST,
             postURL,
+            headers: headers,
             multipartFormData: { multipartFormData in
                 multipartFormData.appendBodyPart(data: UIImageJPEGRepresentation(self.uploadImage, 1.0)!, name: "fileUpload", fileName: "iosFile.jpg", mimeType: "image/jpg")
                 multipartFormData.appendBodyPart(data: "9".dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)!, name :"userid")
@@ -53,6 +69,7 @@ class NewPostViewController : UIViewController {
                 case .Success(let upload, _, _):
                     upload.responseJSON { response in
                         print(response)
+                        SwiftLoader.hide()
                         self.performSegueWithIdentifier("unwindToMenu", sender: self)
                     }
                 case .Failure(let encodingError):
